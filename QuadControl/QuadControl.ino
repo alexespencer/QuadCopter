@@ -292,12 +292,12 @@ void setup()
   pid_YAW_STAB.SetOutputLimits(-360, 360);
 
   //Limit the timings of the PIDs - this is REALLY important - do not set this BELOW the sample rate of the IMU/MPU6050 - it really causes problems
-    pid_PITCH_RATE.SetSampleTime(10);
-    pid_ROLL_RATE.SetSampleTime(10);
-    pid_YAW_RATE.SetSampleTime(10);
-    pid_PITCH_STAB.SetSampleTime(10);
-    pid_ROLL_STAB.SetSampleTime(10);
-    pid_YAW_STAB.SetSampleTime(10);
+  pid_PITCH_RATE.SetSampleTime(10);
+  pid_ROLL_RATE.SetSampleTime(10);
+  pid_YAW_RATE.SetSampleTime(10);
+  pid_PITCH_STAB.SetSampleTime(10);
+  pid_ROLL_STAB.SetSampleTime(10);
+  pid_YAW_STAB.SetSampleTime(10);
 
   // using the PinChangeInt library, attach the interrupts
   // used to read the channels
@@ -466,11 +466,10 @@ void loop()
 
   rollAndPitchRate_P = map(unHPIn, MINRC_HP, MAXRC_HP, 0, 1000) / 2000.0;
   rollAndPitchRate_I = map(unPTIn, MINRC_PT, MAXRC_PT, 0, 1000) / 500.0;
-
+  rollAndPitchRate_D = map(unHTIn, MINRC_HT, MAXRC_HT, 0, 1000) / 8000.0;
+  
   //rollAndPitchRate_P = 0.0;
   //rollAndPitchRate_I = 0.0;
-
-  rollAndPitchRate_D = map(unHTIn, MINRC_HT, MAXRC_HT, 0, 1000) / 8000.0;
 
   //Update the PID tunings
   pid_PITCH_RATE.SetTunings(rollAndPitchRate_P, rollAndPitchRate_I, rollAndPitchRate_D);
@@ -715,16 +714,16 @@ void loop()
       //      Serial.print("\tRequested Roll rate:\t");
       //      Serial.println(req_roll);
       //
-      //      Serial.print("P:\t");
-      //      Serial.print(rollAndPitchRate_P,4);
-      //      Serial.print("\tI:\t");
-      //      Serial.print(rollAndPitchRate_I,4);
-      //      Serial.print("\tD:\t");
-      //      Serial.print(rollAndPitchRate_D,7);   
-      //      Serial.print("\tStab P:\t");
-      //      Serial.print(rollAndPitchStab_P,4);
-      //      Serial.print("\tStab I:\t");
-      //      Serial.println(rollAndPitchStab_I,4);
+      Serial.print("P:\t");
+      Serial.print(rollAndPitchRate_P,4);
+      Serial.print("\tI:\t");
+      Serial.print(rollAndPitchRate_I,4);
+      Serial.print("\tD:\t");
+      Serial.print(rollAndPitchRate_D,7);   
+      Serial.print("\tStab P:\t");
+      Serial.print(rollAndPitchStab_P,4);
+      Serial.print("\tStab I:\t");
+      Serial.println(rollAndPitchStab_I,4);
       //
       //      Serial.print("FL:\t");
       //      Serial.print(motorFL.readMicroseconds());
@@ -776,16 +775,16 @@ void loop()
   // ===           Graphing section - write to serial port        ===
   // ================================================================
 
-  Serial.print(gyro[1]);
-  Serial.print("\t");
-  Serial.print(yrp[1],7);
-  Serial.print("\t");
-  Serial.print(0);
-  Serial.print("\t");
-  Serial.print(0);
-  Serial.print("\t");
-  Serial.print(benchmarkResult);
-  Serial.println("\t");
+  //  Serial.print(gyro[1]);
+  //  Serial.print("\t");
+  //  Serial.print(yrp[1],7);
+  //  Serial.print("\t");
+  //  Serial.print(0);
+  //  Serial.print("\t");
+  //  Serial.print(0);
+  //  Serial.print("\t");
+  //  Serial.print(benchmarkResult);
+  //  Serial.println("\t");
 }
 
 // simple interrupt service routine
@@ -961,6 +960,8 @@ byte GetLatestPacket()
     return 1;
   }
 }
+
+
 
 
 
