@@ -6,8 +6,9 @@ Author: Alex Spencer
 QuadCopter project. From scratch. MPU6050 as the IMU. 20A ESCs (unbranded). 2200kv motors. 3 blade GWS props, HD8040 and HD8040Rs.
 
  With huge thanks to:
- -Jeff Rowberg for all his work on the MPU6050 sensor:
+ -Jeff Rowberg for all his work on the MPU6050 sensor. Here is he license, the same applies to this code.
  ==========================================================
+ 
  I2Cdev device library code is placed under the MIT license
  Copyright (c) 2012 Jeff Rowberg
  
