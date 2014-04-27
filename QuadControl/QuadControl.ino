@@ -53,8 +53,8 @@ Author: Alex Spencer
 // Assign your channel in pins
 #define THROTTLE_IN_PIN 3
 #define PITCH_IN_PIN 4
-#define ROLL_IN_PIN 2
-#define YAW_IN_PIN 5
+#define ROLL_IN_PIN 5
+#define YAW_IN_PIN 2
 #define PT_IN_PIN 7
 #define HT_IN_PIN 8
 #define HP_IN_PIN 12
@@ -97,19 +97,19 @@ uint32_t ulHPStart;
 uint32_t ulAuxStart;
 
 //Min/Max ranges known for each channel
-#define MINRC_ROLL 1052
+#define MINRC_ROLL 1040
 #define MINRC_PITCH 1056
 #define MINRC_THROTTLE 1048
-#define MINRC_YAW 1040
+#define MINRC_YAW 1052
 #define MINRC_PT 1904
 #define MINRC_AUX 1028
 #define MINRC_HT 1060
 #define MINRC_HP 1052
 
-#define MAXRC_ROLL 1892
+#define MAXRC_ROLL 1872
 #define MAXRC_PITCH 1892
 #define MAXRC_THROTTLE 1884
-#define MAXRC_YAW 1872
+#define MAXRC_YAW 1892
 #define MAXRC_PT 1036
 #define MAXRC_AUX 1888
 #define MAXRC_HT 1888
@@ -297,7 +297,7 @@ void setup()
 
   pid_PITCH_RATE.SetOutputLimits(-400, 400); //What adjustments can the Rate PIDs sent to Motor ESCs
   pid_ROLL_RATE.SetOutputLimits(-400, 400); //What adjustments can the Rate PIDs sent to Motor ESCs
-  pid_YAW_RATE.SetOutputLimits(-100, 100); //What adjustments can the Rate PIDs sent to Motor ESCs
+  pid_YAW_RATE.SetOutputLimits(-300, 300); //What adjustments can the Rate PIDs sent to Motor ESCs
 
   pid_PITCH_STAB.SetOutputLimits(-MAX_ROLL_RATE, MAX_ROLL_RATE); //What is the min/max requested roll rate from the Stab PID?
   pid_ROLL_STAB.SetOutputLimits(-MAX_ROLL_RATE, MAX_ROLL_RATE); //What is the min/max requested roll rate from the Stab PID?
@@ -591,7 +591,7 @@ void loop()
     pid_YAW_STAB.SetMode(AUTOMATIC);
     pid_YAW_RATE.SetMode(AUTOMATIC);
 
-    req_yaw = map(unYawIn, MINRC_YAW, MAXRC_YAW, -180, +180);
+    req_yaw = map(unYawIn, MINRC_YAW, MAXRC_YAW, -150, +150);
     req_pitch = map(unPitchIn, MINRC_PITCH, MAXRC_PITCH, -RC_MAX_ROLL_RATE, +RC_MAX_ROLL_RATE); //To-Do: Make this min/max controllable by the remote
     req_roll = map(unRollIn, MINRC_ROLL, MAXRC_ROLL, +RC_MAX_ROLL_RATE, -RC_MAX_ROLL_RATE); //To-Do: Make this min/max controllable by the remote  
 
