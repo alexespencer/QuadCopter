@@ -53,8 +53,8 @@ Author: Alex Spencer
 // Assign your channel in pins
 #define THROTTLE_IN_PIN 3
 #define PITCH_IN_PIN 4
-#define ROLL_IN_PIN 5
-#define YAW_IN_PIN 2
+#define ROLL_IN_PIN 2
+#define YAW_IN_PIN 5
 #define PT_IN_PIN 7
 #define HT_IN_PIN 8
 #define HP_IN_PIN 12
@@ -98,9 +98,9 @@ uint32_t ulAuxStart;
 
 //Min/Max ranges known for each channel
 #define MINRC_ROLL 1040
-#define MINRC_PITCH 1056
+#define MINRC_PITCH 1052
+#define MINRC_YAW 1056
 #define MINRC_THROTTLE 1048
-#define MINRC_YAW 1052
 #define MINRC_PT 1904
 #define MINRC_AUX 1028
 #define MINRC_HT 1060
@@ -108,8 +108,8 @@ uint32_t ulAuxStart;
 
 #define MAXRC_ROLL 1872
 #define MAXRC_PITCH 1892
-#define MAXRC_THROTTLE 1884
 #define MAXRC_YAW 1892
+#define MAXRC_THROTTLE 1884
 #define MAXRC_PT 1036
 #define MAXRC_AUX 1888
 #define MAXRC_HT 1888
@@ -257,7 +257,7 @@ double rollAndPitchRate_P = 1.27;
 double rollAndPitchRate_I = 4.975;
 double rollAndPitchRate_D = 0.067625;
 
-double rollAndPitchStab_P = 1.3;
+double rollAndPitchStab_P = 2.45;
 double rollAndPitchStab_I = 0.0;
 double rollAndPitchStab_D = 0.0;
 
@@ -293,8 +293,10 @@ void setup()
   motorBL.writeMicroseconds(700);
   motorBR.writeMicroseconds(700);
 
+  //Start serial bus
   Serial.begin(115200);
 
+  //Set output limits of the PIDs
   pid_PITCH_RATE.SetOutputLimits(-400, 400); //What adjustments can the Rate PIDs sent to Motor ESCs
   pid_ROLL_RATE.SetOutputLimits(-400, 400); //What adjustments can the Rate PIDs sent to Motor ESCs
   pid_YAW_RATE.SetOutputLimits(-300, 300); //What adjustments can the Rate PIDs sent to Motor ESCs
@@ -311,7 +313,7 @@ void setup()
   pid_ROLL_STAB.SetSampleTime(10);
   pid_YAW_STAB.SetSampleTime(10);
 
-  //Read EEPROM to get what "level" is
+  //Read EEPROM to get what "level" is - this obviously needs setting on a "fresh" Arduino board or if the sensor moves
   rollOffset = EEPROM.readFloat(0); //Read current roll (minus this off actual roll to get "LEVEL")
   pitchOffset = EEPROM.readFloat(4); //Read current pitch (minus this off actual pitch to get "LEVEL")
   Serial.println(F("Pitch/Roll offsets read from EEPROM"));
@@ -336,7 +338,7 @@ void setup()
 
   // Initialize MPU6050
   Serial.println(F("Initializing I2C devices..."));
-  mpu.initialize();
+  mpu.initialize(); //This sometimes hangs here when using USB - but has never failed when on "battery" power
 
   // Verify connection
   Serial.println(F("Testing device connections..."));
@@ -357,6 +359,8 @@ void setup()
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
+
+    Serial.println(F("Waiting for Yaw to stabilise"));
   } 
   else {
     // ERROR!
@@ -374,15 +378,15 @@ void setup()
 // ================================================================
 void loop() 
 { 
-  //Benchmarking
-  benchmark++;
-
-  if (millis() - lastbenchmark > 1000)
-  {
-    benchmarkResult = benchmark;
-    benchmark = 0;
-    lastbenchmark = millis();
-  }
+  //--------Benchmarking----------
+  //  benchmark++;
+  //
+  //  if (millis() - lastbenchmark > 1000)
+  //  {
+  //    benchmarkResult = benchmark;
+  //    benchmark = 0;
+  //    lastbenchmark = millis();
+  //  }
 
   // ================================================================
   // ===           Read radio channel inputs                      ===
@@ -462,8 +466,8 @@ void loop()
 
   bUpdateFlags = 0;
 
-  //Map the input throttle onto 700-2000 for more accurate control
-  rc_throttle = map(unThrottleIn, MINRC_THROTTLE, MAXRC_THROTTLE, 700, MAX_THROTTLE);
+  //Map the input throttle onto 800-max throttle for more accurate control. No point going above Max throttle
+  rc_throttle = map(unThrottleIn, MINRC_THROTTLE, MAXRC_THROTTLE, 800, MAX_THROTTLE);
 
   // ================================================================
   // ===           Controller Pitch Trim controlls mode           ===
@@ -500,8 +504,7 @@ void loop()
   // ===           Controller sets P/I values of STAB PIDs        ===
   // ================================================================
 
-  //rollAndPitchStab_P = map(unPTIn, MINRC_HP, MAXRC_HP, 0, 1000) / 200.0;
-  rollAndPitchStab_P = map(unPTIn, MINRC_PT, MAXRC_PT, 0, 1000) / 50.0;
+  //rollAndPitchStab_P = map(unPTIn, MINRC_PT, MAXRC_PT, 0, 1000) / 400.0;
 
   //Update the PID tunings
   //pid_PITCH_STAB.SetTunings(rollAndPitchStab_P, rollAndPitchStab_I, rollAndPitchStab_D);
@@ -511,14 +514,17 @@ void loop()
   // ===           Controller sets P/I values of YAW PIDs         ===
   // ================================================================
 
-  YawRate_P = map(unHPIn, MINRC_HP, MAXRC_HP, 0, 1000) / 1000.0;
-  YawStab_P = map(unHTIn, MINRC_HT, MAXRC_HT, 0, 1000) / 500.0;
+  YawRate_P = map(unHPIn, MINRC_HP, MAXRC_HP, 0, 1000) / 200.0;
+  YawRate_I = map(unPTIn, MINRC_PT, MAXRC_PT, 0, 1000) / 2000.0;
+  //YawRate_I = 0.0;
+
+  YawStab_P = map(unHTIn, MINRC_HT, MAXRC_HT, 0, 1000) / 100.0;
 
   //Update the PID tunings
   pid_YAW_RATE.SetTunings(YawRate_P, YawRate_I, YawRate_D);
   pid_YAW_STAB.SetTunings(YawStab_P, YawStab_I, YawStab_D);
 
-  //Keep track of the current gyro readings
+  //Keep track of the current gyro readings - used for averaging values later on
   m1_gyro[0] = gyro[0]; //Pitch
   m1_gyro[1] = gyro[1]; //Roll
   m1_gyro[2] = gyro[2]; //Yaw
@@ -551,7 +557,7 @@ void loop()
       //Yaw unstable - wait, but record this current yaw
       yaw_1sec = yrp[0]; 
     }
-    else
+    else if (rc_throttle < MIN_THROTTLE) //For safety, do not enable Quad if power already up
     {
       //Yaw is stable, can now fly/arm motors as required
       yaw_stable = true;
@@ -679,7 +685,6 @@ void loop()
     //pidOutput[PID_ROLL_RATE] = 0.0;
 
     //Get Outputs and write to motors
-
     esc_FL = constrain(rc_throttle - pidOutput[PID_ROLL_RATE] - pidOutput[PID_PITCH_RATE] - pidOutput[PID_YAW_RATE], MIN_ESC, MAX_ESC);
     esc_BL = constrain(rc_throttle - pidOutput[PID_ROLL_RATE] + pidOutput[PID_PITCH_RATE] + pidOutput[PID_YAW_RATE], MIN_ESC, MAX_ESC);
     esc_FR = constrain(rc_throttle + pidOutput[PID_ROLL_RATE] - pidOutput[PID_PITCH_RATE] + pidOutput[PID_YAW_RATE], MIN_ESC, MAX_ESC);
@@ -697,36 +702,36 @@ void loop()
     if (millis() - lastSerialDebug > serialDebug) {
       lastSerialDebug = millis();
 
-//      Serial.print("Yaw: \t");
-//      Serial.print(yrp[0]);
-//
-//      Serial.print("\tYaw Target: ");
-//      Serial.print(yaw_target);
-//
-//      Serial.print("\tYaw error: ");
-//      Serial.print(yrp[0] - yaw_target);
-//
-//      Serial.print("\tCorrected Error: ");
-//      Serial.print(pidInput[PID_YAW_STAB]);
-//
-//      Serial.print("Yaw Rate p: \t");      
-//      Serial.print(pid_YAW_RATE.GetKp());
-//      Serial.print("\tYaw Stab p: \t");      
-//      Serial.println(pid_YAW_STAB.GetKp());        
-//
-//      Serial.print("P:\t");
-//      Serial.print(rollAndPitchRate_P,4);
-//      Serial.print("\tI:\t");
-//      Serial.print(rollAndPitchRate_I,4);
-//      Serial.print("\tD:\t");
-//      Serial.print(rollAndPitchRate_D,7);   
-//      Serial.print("\tStab P:\t");
-//      Serial.print(rollAndPitchStab_P,4);
-//      Serial.print("\tStab I:\t");
-//      Serial.println(rollAndPitchStab_I,4);
-//
-//      Serial.print("Free memory:\t");
-//      Serial.println(freeMemory());
+      //      Serial.print("Yaw: \t");
+      //      Serial.print(yrp[0]);
+      //
+      //      Serial.print("\tYaw Target: ");
+      //      Serial.print(yaw_target);
+      //
+      //      Serial.print("\tYaw error: ");
+      //      Serial.print(yrp[0] - yaw_target);
+      //
+      //      Serial.print("\tCorrected Error: ");
+      //      Serial.print(pidInput[PID_YAW_STAB]);
+      //
+      Serial.print("Yaw Rate p: \t");      
+      Serial.print(pid_YAW_RATE.GetKp(), 4);
+      Serial.print("\tYaw Rate i: \t");      
+      Serial.print(pid_YAW_RATE.GetKi(), 4);
+      Serial.print("\tYaw Stab p: \t");      
+      Serial.println(pid_YAW_STAB.GetKp(), 4);        
+      //
+      //      Serial.print("P:\t");
+      //      Serial.print(rollAndPitchRate_P,4);
+      //      Serial.print("\tI:\t");
+      //      Serial.print(rollAndPitchRate_I,4);
+      //      Serial.print("\tD:\t");
+      //      Serial.print(rollAndPitchRate_D,7);   
+      //      Serial.print("\tStab P:\t");
+      //      Serial.println(rollAndPitchStab_P,4);
+      //
+      //      Serial.print("Free memory:\t");
+      //      Serial.println(freeMemory());
     }
   }
   else {
@@ -773,12 +778,12 @@ void loop()
     req_pitch = map(unPitchIn, MINRC_PITCH, MAXRC_PITCH, -1000, +1000); //To-Do: Make this min/max controllable by the remote
     req_roll = map(unRollIn, MINRC_ROLL, MAXRC_ROLL, -1000, +1000); //To-Do: Make this min/max controllable by the remote  
 
-    if (requestStart != true && yaw_stable == false && req_pitch > 500 && req_roll > 500)
+    if (yaw_stable == false && requestStart != true && req_pitch > 500 && req_roll > 500)
     {
       requestStart = true;
       requestStartMillis = millis(); 
     }
-    else if (requestStart == true && yaw_stable == false && valuesSaved == false && saveWhenStable == false && req_pitch > 500 && req_roll > 500 && millis() - requestStartMillis > 2000)
+    else if (yaw_stable == false && requestStart == true && valuesSaved == false && saveWhenStable == false && req_pitch > 500 && req_roll > 500 && millis() - requestStartMillis > 2000)
     {
       //If request for more than 1 second - save the current roll/pitch angles in the EEPROM
       saveWhenStable = true;
@@ -995,6 +1000,7 @@ byte GetLatestPacket()
     return 1;
   }
 }
+
 
 
 
